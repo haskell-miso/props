@@ -125,7 +125,7 @@ parentUpdate = \case
 parentView :: () -> ParentModel -> View ParentModel ParentAction
 parentView _ m =
   div_ [ CSS.style_ pageStyle ]
-  [ h1_  [ CSS.style_ titleStyle ] [ "🍜 miso-props" ]
+  [ h1_  [ CSS.style_ titleStyle ] [ "🍜 ", a_ [ href_ "https://github.com/haskell-miso/miso-props", target_ "blank" ] [ "miso-props" ] ]
   , p_ [ CSS.style_ subtitleStyle ]
     [ "Props are passed "
     , strong_ [] [ "parent → child → grandchild" ]
