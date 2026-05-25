@@ -18,6 +18,7 @@ module Main where
 -----------------------------------------------------------------------------
 import           Miso
 import           Miso.Html
+import           Miso.Html.Property
 import           Miso.String (MisoString, ms)
 import qualified Miso.CSS    as CSS
 -----------------------------------------------------------------------------
