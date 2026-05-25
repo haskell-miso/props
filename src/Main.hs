@@ -97,7 +97,7 @@ childView n m =
         ]
       ]
     ]
-  , mountProps n grandchild
+  , mountWithProps n grandchild
   ]
 -----------------------------------------------------------------------------
 -- =====================================================================
@@ -145,7 +145,7 @@ parentView _ m =
           ]
         ]
       ]
-    , mountProps (parentCount m) child
+    , mountWithProps (parentCount m) child
     ]
   ]
 -----------------------------------------------------------------------------
