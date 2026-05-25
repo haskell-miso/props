@@ -3,8 +3,10 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
--- Demonstrates Miso props: passing and drilling data from a parent component
--- down through a child and into a grandchild via 'mountProps' / 'checkProps'.
+-- Demonstrates Miso typesafe props: passing and drilling data from a parent
+-- component down through a child and into a grandchild via 'mountProps'.
+-- Props flow as plain Haskell values via the new 'view :: props -> model -> View'
+-- signature
 --
 -- Layout:
 --   Parent  ──mountProps──►  Child  ──mountProps──►  Grandchild
@@ -17,7 +19,7 @@ module Main where
 import           Miso
 import           Miso.Html
 import           Miso.String (MisoString, ms)
-import qualified Miso.CSS as CSS
+import qualified Miso.CSS    as CSS
 -----------------------------------------------------------------------------
 #ifdef WASM
 foreign export javascript "hs_start" main :: IO ()
@@ -31,34 +33,24 @@ type SharedProps = Int
 -- =====================================================================
 data GCModel = GCModel
   { gcToggle :: Bool
-  , gcCount  :: Int
   } deriving (Show, Eq)
 
 data GCAction
   = GCToggleLocal
-  | GCPropsReceived SharedProps
-  | GCBadProps MisoString
 
-grandchild :: Component ChildModel GCModel GCAction
-grandchild = (component (GCModel False 0) gcUpdate gcView)
-  { useProps = checkProps GCPropsReceived GCBadProps }
+grandchild :: Component ChildModel SharedProps GCModel GCAction
+grandchild = component (GCModel False) gcUpdate gcView
 
-gcUpdate :: GCAction -> Effect ChildModel GCModel GCAction
-gcUpdate = \case
-  GCToggleLocal ->
-    modify $ \m -> m { gcToggle = not (gcToggle m) }
-  GCPropsReceived n ->
-    modify $ \m -> m { gcCount = n }
-  GCBadProps _ ->
-    pure ()
+gcUpdate :: GCAction -> Effect ChildModel SharedProps GCModel GCAction
+gcUpdate GCToggleLocal = modify $ \m -> m { gcToggle = not (gcToggle m) }
 
-gcView :: GCModel -> View GCModel GCAction
-gcView m =
+gcView :: SharedProps -> GCModel -> View GCModel GCAction
+gcView n m =
   div_ [ CSS.style_ gcBoxStyle ]
   [ componentHeader "Grandchild"
   , propsSection
     [ sectionLabel "Props (drilled from parent via child)"
-    , infoRow "Drilled count" (ms (gcCount m))
+    , infoRow "Drilled count" (ms n)
     ]
   , stateSection
     [ sectionLabel "Local state"
@@ -73,38 +65,28 @@ gcView m =
 -- =====================================================================
 data ChildModel = ChildModel
   { childLocal :: Int
-  , childCount :: Int
   } deriving (Show, Eq)
 
 data ChildAction
   = ChildIncr
   | ChildDecr
-  | ChildPropsReceived SharedProps
-  | ChildBadProps MisoString
 
-child :: Component ParentModel ChildModel ChildAction
-child = (component (ChildModel 0 0) childUpdate childView)
-  { useProps = checkProps ChildPropsReceived ChildBadProps }
+child :: Component ParentModel SharedProps ChildModel ChildAction
+child = component (ChildModel 0) childUpdate childView
 
-childUpdate :: ChildAction -> Effect ParentModel ChildModel ChildAction
+childUpdate :: ChildAction -> Effect ParentModel SharedProps ChildModel ChildAction
 childUpdate = \case
-  ChildIncr ->
-    modify $ \m -> m { childLocal = childLocal m + 1 }
-  ChildDecr ->
-    modify $ \m -> m { childLocal = childLocal m - 1 }
-  ChildPropsReceived n ->
-    modify $ \m -> m { childCount = n }
-  ChildBadProps _ ->
-    pure ()
+  ChildIncr -> modify $ \m -> m { childLocal = childLocal m + 1 }
+  ChildDecr -> modify $ \m -> m { childLocal = childLocal m - 1 }
 
-childView :: ChildModel -> View ChildModel ChildAction
-childView m =
+childView :: SharedProps -> ChildModel -> View ChildModel ChildAction
+childView n m =
   div_ [ CSS.style_ rowStyle ]
   [ div_ [ CSS.style_ childBoxStyle ]
     [ componentHeader "Child"
     , propsSection
       [ sectionLabel "Props (from parent)"
-      , infoRow "Prop count" (ms (childCount m))
+      , infoRow "Prop count" (ms n)
       ]
     , stateSection
       [ sectionLabel "Local state"
@@ -115,7 +97,7 @@ childView m =
         ]
       ]
     ]
-  , mountProps (childCount m) grandchild
+  , mountProps n grandchild
   ]
 -----------------------------------------------------------------------------
 -- =====================================================================
@@ -135,13 +117,13 @@ main = startApp defaultEvents app
 app :: App ParentModel ParentAction
 app = component (ParentModel 0) parentUpdate parentView
 
-parentUpdate :: ParentAction -> Effect ROOT ParentModel ParentAction
+parentUpdate :: ParentAction -> Effect ROOT () ParentModel ParentAction
 parentUpdate = \case
   ParentIncr -> modify $ \m -> m { parentCount = parentCount m + 1 }
   ParentDecr -> modify $ \m -> m { parentCount = parentCount m - 1 }
 
-parentView :: ParentModel -> View ParentModel ParentAction
-parentView m =
+parentView :: () -> ParentModel -> View ParentModel ParentAction
+parentView _ m =
   div_ [ CSS.style_ pageStyle ]
   [ h1_  [ CSS.style_ titleStyle ] [ "🍜 miso-props" ]
   , p_ [ CSS.style_ subtitleStyle ]
