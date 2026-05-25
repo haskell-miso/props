@@ -1,6 +1,6 @@
 # miso-props
 
-Demonstrates [miso](https://github.com/dmjio/miso) **props** — passing data from a parent `Component` down to a child and grandchild via [`mountProps`](https://haddocks.haskell-miso.org).
+Demonstrates [miso](https://github.com/dmjio/miso) **props** — passing data from a parent `Component` down to a child and grandchild via [`mountProps`](https://haddocks.haskell-miso.org). Based on [React props](https://react.dev/learn/passing-props-to-a-component).
 
 ## What it shows
 
