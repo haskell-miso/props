@@ -38,12 +38,17 @@ data GCModel = GCModel
 
 data GCAction
   = GCToggleLocal
+  | PropsChanged SharedProps SharedProps
 
 grandchild :: Component ChildModel SharedProps GCModel GCAction
-grandchild = component (GCModel False) gcUpdate gcView
+grandchild = (component (GCModel False) gcUpdate gcView) { onPropsChanged = Just PropsChanged }
 
 gcUpdate :: GCAction -> Effect ChildModel SharedProps GCModel GCAction
 gcUpdate GCToggleLocal = modify $ \m -> m { gcToggle = not (gcToggle m) }
+gcUpdate (PropsChanged o n) = do
+  io_ $ do
+    consoleLog ("old: " <> ms (show o))
+    consoleLog ("new: " <> ms (show n))
 
 gcView :: SharedProps -> GCModel -> View GCModel GCAction
 gcView n m =
