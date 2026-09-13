@@ -5,8 +5,8 @@
 -----------------------------------------------------------------------------
 -- Demonstrates Miso typesafe props: passing and drilling data from a parent
 -- component down through a child and into a grandchild via 'mountProps'.
--- Props flow as plain Haskell values via the new 'view :: props -> model -> View'
--- signature
+-- Props flow as plain Haskell values; a component's 'view' takes only the
+-- model and reads its props ambiently with 'vprops'.
 --
 -- Layout:
 --   Parent  ──mountProps──►  Child  ──mountProps──►  Grandchild
@@ -40,18 +40,18 @@ data GCAction
   = GCToggleLocal
   | PropsChanged SharedProps SharedProps
 
-grandchild :: Component ChildModel SharedProps GCModel GCAction
+grandchild :: Component () SharedProps GCModel GCAction
 grandchild = (component (GCModel False) gcUpdate gcView) { onPropsChanged = Just PropsChanged }
 
-gcUpdate :: GCAction -> Effect ChildModel SharedProps GCModel GCAction
+gcUpdate :: GCAction -> Effect () SharedProps GCModel GCAction
 gcUpdate GCToggleLocal = modify $ \m -> m { gcToggle = not (gcToggle m) }
 gcUpdate (PropsChanged o n) = do
   io_ $ do
     consoleLog ("old: " <> ms (show o))
     consoleLog ("new: " <> ms (show n))
 
-gcView :: SharedProps -> GCModel -> View GCModel GCAction
-gcView n m =
+gcView :: GCModel -> View () SharedProps GCModel GCAction
+gcView m = vprops $ \n ->
   div_ [ CSS.style_ gcBoxStyle ]
   [ componentHeader "Grandchild"
   , propsSection
@@ -77,16 +77,16 @@ data ChildAction
   = ChildIncr
   | ChildDecr
 
-child :: Component ParentModel SharedProps ChildModel ChildAction
+child :: Component () SharedProps ChildModel ChildAction
 child = component (ChildModel 0) childUpdate childView
 
-childUpdate :: ChildAction -> Effect ParentModel SharedProps ChildModel ChildAction
+childUpdate :: ChildAction -> Effect () SharedProps ChildModel ChildAction
 childUpdate = \case
   ChildIncr -> modify $ \m -> m { childLocal = childLocal m + 1 }
   ChildDecr -> modify $ \m -> m { childLocal = childLocal m - 1 }
 
-childView :: SharedProps -> ChildModel -> View ChildModel ChildAction
-childView n m =
+childView :: ChildModel -> View () SharedProps ChildModel ChildAction
+childView m = vprops $ \n ->
   div_ [ CSS.style_ rowStyle ]
   [ div_ [ CSS.style_ childBoxStyle ]
     [ componentHeader "Child"
@@ -123,13 +123,13 @@ main = startApp defaultEvents app
 app :: App ParentModel ParentAction
 app = component (ParentModel 0) parentUpdate parentView
 
-parentUpdate :: ParentAction -> Effect ROOT () ParentModel ParentAction
+parentUpdate :: ParentAction -> Effect () () ParentModel ParentAction
 parentUpdate = \case
   ParentIncr -> modify $ \m -> m { parentCount = parentCount m + 1 }
   ParentDecr -> modify $ \m -> m { parentCount = parentCount m - 1 }
 
-parentView :: () -> ParentModel -> View ParentModel ParentAction
-parentView _ m =
+parentView :: ParentModel -> View () () ParentModel ParentAction
+parentView m =
   div_ [ CSS.style_ pageStyle ]
   [ h1_  [ CSS.style_ titleStyle ] [ "🍜 ", a_ [ href_ "https://github.com/haskell-miso/miso-props", target_ "blank" ] [ "miso-props" ] ]
   , p_ [ CSS.style_ subtitleStyle ]
@@ -159,11 +159,11 @@ parentView _ m =
 -- Shared view helpers
 -- =====================================================================
 
-componentHeader :: MisoString -> View model action
+componentHeader :: MisoString -> View context props model action
 componentHeader label =
   div_ [ CSS.style_ headerStyle ] [ text label ]
 
-infoRow :: MisoString -> MisoString -> View model action
+infoRow :: MisoString -> MisoString -> View context props model action
 infoRow label val =
   div_
   [ CSS.style_
@@ -178,7 +178,7 @@ infoRow label val =
   , span_ [ CSS.style_ [ CSS.color (CSS.hex "#444") ] ] [ text val ]
   ]
 
-sectionLabel :: MisoString -> View model action
+sectionLabel :: MisoString -> View context props model action
 sectionLabel label =
   div_
   [ CSS.style_
@@ -191,22 +191,22 @@ sectionLabel label =
   ]
   [ text label ]
 
-btn :: [CSS.Style] -> action -> MisoString -> View model action
+btn :: [CSS.Style] -> action -> MisoString -> View context props model action
 btn btnSty action label =
   button_
   [ onClick action, CSS.style_ btnSty ]
   [ text label ]
 
-buttonRow :: [View model action] -> View model action
+buttonRow :: [View context props model action] -> View context props model action
 buttonRow children =
   div_ [ CSS.style_ [ CSS.display "flex", CSS.gap "8px", CSS.marginTop "10px" ] ]
   children
 
-propsSection :: [View model action] -> View model action
+propsSection :: [View context props model action] -> View context props model action
 propsSection children =
   div_ [ CSS.style_ propsSectionStyle ] children
 
-stateSection :: [View model action] -> View model action
+stateSection :: [View context props model action] -> View context props model action
 stateSection children =
   div_ [ CSS.style_ stateSectionStyle ] children
 
